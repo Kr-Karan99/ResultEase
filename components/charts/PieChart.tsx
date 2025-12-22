@@ -158,13 +158,15 @@ export function PieChart({
 }
 
 // Specialized components for common use cases
+interface PassFailChartProps extends Omit<PieChartProps, 'title' | 'description' | 'colors' | 'formatValue' | 'data'> {
+  data: Array<{ name: string; value: number }>
+}
+
 export function PassFailChart({
   data,
   className,
   ...props
-}: Omit<PieChartProps, 'title' | 'description' | 'colors' | 'formatValue' | 'data'> & {
-  data: Array<{ name: 'Passed' | 'Failed'; value: number }>
-}) {
+}: PassFailChartProps) {
   const passFailColors = [CHART_COLORS.secondary, CHART_COLORS.warning] // Green for pass, orange for fail
   
   return (
@@ -197,16 +199,18 @@ export function DonutChart({
 }
 
 // Performance breakdown chart
+interface PerformanceLevelChartProps extends Omit<PieChartProps, 'title' | 'description' | 'colors' | 'data'> {
+  data: Array<{ 
+    name: string
+    value: number 
+  }>
+}
+
 export function PerformanceLevelChart({
   data,
   className,
   ...props
-}: Omit<PieChartProps, 'title' | 'description' | 'colors' | 'data'> & {
-  data: Array<{ 
-    name: 'Excellent' | 'Good' | 'Average' | 'Below Average' | 'Poor'
-    value: number 
-  }>
-}) {
+}: PerformanceLevelChartProps) {
   const performanceColors = [
     CHART_COLORS.secondary, // Excellent - Green
     CHART_COLORS.primary,   // Good - Blue
