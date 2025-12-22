@@ -235,8 +235,17 @@ export class AnalyticsService {
     })
     
     // Sort by difficulty (easiest first)
-    const difficultyOrder = { 'Easy': 0, 'Moderate': 1, 'Difficult': 2, 'Very Difficult': 3 }
-    analysis.sort((a, b) => difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty])
+    const difficultyOrder: Record<'Easy' | 'Moderate' | 'Difficult' | 'Very Difficult', number> = { 
+      'Easy': 0, 
+      'Moderate': 1, 
+      'Difficult': 2, 
+      'Very Difficult': 3 
+    }
+    analysis.sort((a, b) => {
+      const aOrder = difficultyOrder[a.difficulty as keyof typeof difficultyOrder]
+      const bOrder = difficultyOrder[b.difficulty as keyof typeof difficultyOrder]
+      return aOrder - bOrder
+    })
     
     return analysis
   }
