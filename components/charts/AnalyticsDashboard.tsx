@@ -30,10 +30,10 @@ interface AnalyticsDashboardProps {
     }>
     chartData: {
       subjectAverages: Array<{ subject: string; average: number }>
-      passFailData: Array<{ name: 'Passed' | 'Failed'; value: number }>
+      passFailData: Array<{ name: string; value: number }>
       gradeDistribution: Array<{ grade: string; count: number }>
       performanceDistribution: Array<{
-        name: 'Excellent' | 'Good' | 'Average' | 'Below Average' | 'Poor'
+        name: string
         value: number
       }>
       trendData?: Array<{ exam: string; average: number }>
