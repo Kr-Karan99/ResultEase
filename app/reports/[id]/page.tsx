@@ -45,9 +45,9 @@ export default function ReportPage({ params }: ReportPageProps) {
         { subject: 'English', average: 75.8 },
       ],
       passFailData: [
-        { name: 'Passed' as const, value: 31 },
-        { name: 'Failed' as const, value: 4 },
-      ],
+        { name: 'Passed', value: 31 },
+        { name: 'Failed', value: 4 },
+      ] as Array<{ name: string; value: number }>,
       gradeDistribution: [
         { grade: 'A+', count: 8 },
         { grade: 'A', count: 12 },
