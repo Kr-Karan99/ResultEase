@@ -124,13 +124,15 @@ export function BarChart({
 }
 
 // Specialized components for common use cases
+interface SubjectAverageChartProps extends Omit<BarChartProps, 'title' | 'description' | 'formatValue' | 'data'> {
+  data: Array<{ subject: string; average: number }>
+}
+
 export function SubjectAverageChart({ 
   data, 
   className,
   ...props 
-}: Omit<BarChartProps, 'title' | 'description' | 'formatValue' | 'data'> & {
-  data: Array<{ subject: string; average: number }>
-}) {
+}: SubjectAverageChartProps) {
   const chartData = data.map(item => ({
     name: item.subject,
     value: item.average
@@ -149,13 +151,15 @@ export function SubjectAverageChart({
   )
 }
 
+interface GradeDistributionChartProps extends Omit<BarChartProps, 'title' | 'description' | 'formatValue' | 'data'> {
+  data: Array<{ grade: string; count: number }>
+}
+
 export function GradeDistributionChart({
   data,
   className,
   ...props
-}: Omit<BarChartProps, 'title' | 'description' | 'formatValue' | 'data'> & {
-  data: Array<{ grade: string; count: number }>
-}) {
+}: GradeDistributionChartProps) {
   const chartData = data.map(item => ({
     name: item.grade,
     value: item.count
