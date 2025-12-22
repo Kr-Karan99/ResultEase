@@ -138,7 +138,7 @@ export function PerformanceTrendChart({
   data, 
   className,
   ...props 
-}: Omit<LineChartProps, 'title' | 'description' | 'formatValue'> & {
+}: Omit<LineChartProps, 'title' | 'description' | 'formatValue' | 'data'> & {
   data: Array<{ exam: string; average: number }>
 }) {
   const chartData = data.map(item => ({
@@ -163,7 +163,7 @@ export function AttendanceTrendChart({
   data,
   className,
   ...props
-}: Omit<LineChartProps, 'title' | 'description' | 'formatValue'> & {
+}: Omit<LineChartProps, 'title' | 'description' | 'formatValue' | 'data'> & {
   data: Array<{ month: string; attendance: number }>
 }) {
   const chartData = data.map(item => ({
@@ -190,7 +190,7 @@ export function SubjectComparisonChart({
   subjects,
   className,
   ...props
-}: Omit<LineChartProps, 'title' | 'description' | 'dataKey' | 'color'> & {
+}: Omit<LineChartProps, 'title' | 'description' | 'dataKey' | 'color' | 'data'> & {
   data: Array<{ [key: string]: any }>
   subjects: string[]
 }) {

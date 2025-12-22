@@ -128,10 +128,10 @@ interface SubjectAverageChartProps extends Omit<BarChartProps, 'title' | 'descri
   data: Array<{ subject: string; average: number }>
 }
 
-export function SubjectAverageChart({
-  data,
+export function SubjectAverageChart({ 
+  data, 
   className,
-  ...props
+  ...props 
 }: SubjectAverageChartProps) {
   const chartData = data.map(item => ({
     name: item.subject,

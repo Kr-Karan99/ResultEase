@@ -16,6 +16,7 @@ export interface PieChartData {
   name: string
   value: number
   color?: string
+  [key: string]: string | number | undefined
 }
 
 interface PieChartProps {
@@ -161,7 +162,7 @@ export function PassFailChart({
   data,
   className,
   ...props
-}: Omit<PieChartProps, 'title' | 'description' | 'colors' | 'formatValue'> & {
+}: Omit<PieChartProps, 'title' | 'description' | 'colors' | 'formatValue' | 'data'> & {
   data: Array<{ name: 'Passed' | 'Failed'; value: number }>
 }) {
   const passFailColors = [CHART_COLORS.secondary, CHART_COLORS.warning] // Green for pass, orange for fail
@@ -200,7 +201,7 @@ export function PerformanceLevelChart({
   data,
   className,
   ...props
-}: Omit<PieChartProps, 'title' | 'description' | 'colors'> & {
+}: Omit<PieChartProps, 'title' | 'description' | 'colors' | 'data'> & {
   data: Array<{ 
     name: 'Excellent' | 'Good' | 'Average' | 'Below Average' | 'Poor'
     value: number 
