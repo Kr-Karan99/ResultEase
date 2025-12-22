@@ -77,14 +77,14 @@ export function BarChart({
           }}
         >
           {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />}
-          <XAxis 
+          <XAxis
             dataKey={nameKey}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: '#6b7280' }}
             tickFormatter={formatLabel}
           />
-          <YAxis 
+          <YAxis
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: '#6b7280' }}
@@ -92,8 +92,8 @@ export function BarChart({
           />
           <Tooltip content={<CustomTooltip />} />
           {showLegend && <Legend />}
-          <Bar 
-            dataKey={dataKey} 
+          <Bar
+            dataKey={dataKey}
             fill={color}
             radius={[4, 4, 0, 0]}
           />
@@ -124,13 +124,15 @@ export function BarChart({
 }
 
 // Specialized components for common use cases
-export function SubjectAverageChart({ 
-  data, 
-  className,
-  ...props 
-}: Omit<BarChartProps, 'title' | 'description' | 'formatValue'> & {
+interface SubjectAverageChartProps extends Omit<BarChartProps, 'title' | 'description' | 'formatValue' | 'data'> {
   data: Array<{ subject: string; average: number }>
-}) {
+}
+
+export function SubjectAverageChart({
+  data,
+  className,
+  ...props
+}: SubjectAverageChartProps) {
   const chartData = data.map(item => ({
     name: item.subject,
     value: item.average
@@ -149,13 +151,15 @@ export function SubjectAverageChart({
   )
 }
 
+interface GradeDistributionChartProps extends Omit<BarChartProps, 'title' | 'description' | 'formatValue' | 'data'> {
+  data: Array<{ grade: string; count: number }>
+}
+
 export function GradeDistributionChart({
   data,
   className,
   ...props
-}: Omit<BarChartProps, 'title' | 'description' | 'formatValue'> & {
-  data: Array<{ grade: string; count: number }>
-}) {
+}: GradeDistributionChartProps) {
   const chartData = data.map(item => ({
     name: item.grade,
     value: item.count
