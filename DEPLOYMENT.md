@@ -48,11 +48,9 @@ Create production environment variables:
 # Required
 NEXT_PUBLIC_BASE_URL=https://your-domain.com
 NEXT_PUBLIC_APP_NAME=ResultEase
-
 # Optional (for analytics)
 NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_HOTJAR_ID=XXXXXXX
-
 # Future Firebase Integration
 NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
@@ -72,7 +70,7 @@ const nextConfig = {
     unoptimized: process.env.NODE_ENV === 'development'
   },
   serverExternalPackages: ['xlsx'],
-  
+
   // Security headers
   async headers() {
     return [
@@ -173,7 +171,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_BASE_URL=https://your-domain.com
     restart: unless-stopped
-    
+
   nginx:
     image: nginx:alpine
     ports:
@@ -186,11 +184,8 @@ services:
       - resultease
     restart: unless-stopped
 ```
-
 ## ☁️ Cloud Deployments
-
 ### AWS (Amplify)
-
 **amplify.yml:**
 ```yaml
 version: 1
@@ -210,9 +205,7 @@ frontend:
     paths:
       - node_modules/**/*
 ```
-
 ### Google Cloud Platform
-
 **app.yaml (App Engine):**
 ```yaml
 runtime: nodejs18
@@ -225,9 +218,7 @@ automatic_scaling:
   min_instances: 1
   max_instances: 10
 ```
-
 ### Azure (Static Web Apps)
-
 **staticwebapp.config.json:**
 ```json
 {
@@ -309,13 +300,9 @@ export const config = {
   matcher: '/api/:path*',
 }
 ```
-
 ## 📊 Monitoring & Analytics
-
 ### Google Analytics 4
-
 Add to `app/layout.tsx`:
-
 ```typescript
 import Script from 'next/script'
 
@@ -341,13 +328,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   )
 }
 ```
-
 ### Error Tracking (Sentry)
-
 ```bash
 npm install @sentry/nextjs
 ```
-
 **sentry.client.config.js:**
 ```javascript
 import * as Sentry from '@sentry/nextjs'
@@ -357,9 +341,7 @@ Sentry.init({
   tracesSampleRate: 1.0,
 })
 ```
-
 ### Performance Monitoring
-
 **Web Vitals tracking:**
 ```typescript
 // app/layout.tsx
@@ -376,11 +358,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   )
 }
 ```
-
 ## 🚀 Performance Optimization
-
 ### Build Optimization
-
 ```json
 {
   "scripts": {
@@ -390,13 +369,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }
 }
 ```
-
 ### Bundle Analysis
-
 ```bash
 npm install @next/bundle-analyzer
 ```
-
 **next.config.js:**
 ```javascript
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
@@ -405,9 +381,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 module.exports = withBundleAnalyzer(nextConfig)
 ```
-
 ### Image Optimization
-
 ```typescript
 // next.config.js
 module.exports = {
@@ -418,11 +392,8 @@ module.exports = {
   }
 }
 ```
-
 ## 🔄 CI/CD Pipeline
-
 ### GitHub Actions
-
 **.github/workflows/deploy.yml:**
 ```yaml
 name: Deploy to Production
@@ -442,16 +413,16 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run tests
         run: npm test
-      
+
       - name: Run linting
         run: npm run lint
-      
+
       - name: Build application
         run: npm run build
 
@@ -461,7 +432,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
@@ -470,9 +441,7 @@ jobs:
           vercel-project-id: ${{ secrets.PROJECT_ID }}
           vercel-args: '--prod'
 ```
-
 ### Quality Gates
-
 ```yaml
 # Additional quality checks
 - name: Check bundle size
@@ -484,11 +453,8 @@ jobs:
 - name: Type checking
   run: npx tsc --noEmit
 ```
-
 ## 📱 Progressive Web App
-
 ### Manifest Configuration
-
 **public/manifest.json:**
 ```json
 {
@@ -513,9 +479,7 @@ jobs:
   ]
 }
 ```
-
 ### Service Worker
-
 ```javascript
 // public/sw.js
 const CACHE_NAME = 'resultease-v1'
@@ -543,28 +507,18 @@ self.addEventListener('fetch', (event) => {
   )
 })
 ```
-
 ## 🔍 SEO Optimization
-
 ### Sitemap Generation
-
 Automatic sitemap at `/sitemap.xml` via `app/sitemap.ts`
-
 ### Robots.txt
-
 Automatic robots.txt at `/robots.txt` via `app/robots.ts`
-
 ### Meta Tags
-
 Comprehensive meta tags in each page layout for:
 - Search engines
 - Social media sharing
 - Mobile optimization
-
 ## 🚨 Troubleshooting
-
 ### Common Issues
-
 **Build Errors:**
 ```bash
 # Clear Next.js cache
@@ -577,23 +531,18 @@ npm install
 # Check Node version
 node --version # Should be 18+
 ```
-
 **Memory Issues:**
 ```bash
 # Increase Node memory limit
 NODE_OPTIONS="--max-old-space-size=4096" npm run build
 ```
-
 **Deployment Failures:**
 - Check environment variables
 - Verify build command
 - Review deployment logs
 - Test build locally first
-
 ### Health Checks
-
 Create health check endpoint:
-
 ```typescript
 // app/api/health/route.ts
 export async function GET() {
@@ -604,32 +553,23 @@ export async function GET() {
   })
 }
 ```
-
 ## 📈 Scaling Considerations
-
 ### CDN Configuration
-
 - Static assets via CDN
 - Image optimization
 - Gzip compression
 - Browser caching headers
-
 ### Database Scaling (Future)
-
 When integrating Firebase:
 - Firestore indexes
 - Connection pooling
 - Read replicas
 - Caching strategies
-
 ### Load Balancing
-
 For high-traffic deployments:
 - Multiple instances
 - Health checks
 - Session affinity
 - Auto-scaling rules
-
 ---
-
 This deployment guide ensures **reliable**, **secure**, and **scalable** production deployments of ResultEase.

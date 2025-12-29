@@ -1,11 +1,20 @@
+'use client'
+
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { useProtectedRoute } from '@/lib/hooks/useProtectedRoute'
+import { useAuth } from '@/context/AuthContext'
 
 export default function DashboardPage() {
+  // Protect this route - redirects unauthenticated users
+  useProtectedRoute()
+  
+  const { user } = useAuth()
+
   // Mock data - in real app this would come from the backend
   const recentReports = [
     {

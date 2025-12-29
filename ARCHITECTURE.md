@@ -252,7 +252,7 @@ All infrastructure services are currently mocked for development and testing:
 class MockAuthService implements AuthPort {
   private users = new Map<string, MockUser>()
   private sessions = new Map<string, string>()
-  
+
   // Implements all AuthPort methods with in-memory storage
 }
 ```
@@ -261,7 +261,7 @@ class MockAuthService implements AuthPort {
 ```typescript
 class MockStorageService implements StoragePort {
   private files = new Map<string, MockFileData>()
-  
+
   // Implements all StoragePort methods with in-memory storage
 }
 ```
@@ -270,7 +270,7 @@ class MockStorageService implements StoragePort {
 ```typescript
 class MockReportRepository implements ReportRepositoryPort {
   private reports = new Map<string, MockReportData>()
-  
+
   // Implements all ReportRepositoryPort methods with in-memory storage
 }
 ```

@@ -1,3 +1,5 @@
+'use client'
+
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +8,7 @@ import { Footer } from '@/components/layout/Footer'
 import { SubjectAverageChart, GradeDistributionChart } from '@/components/charts/BarChart'
 import { PassFailChart } from '@/components/charts/PieChart'
 import { StudentRankingTable } from '@/components/tables/DataTable'
+import { useProtectedRoute } from '@/lib/hooks/useProtectedRoute'
 
 interface ReportPageProps {
   params: {
@@ -14,6 +17,9 @@ interface ReportPageProps {
 }
 
 export default function ReportPage({ params }: ReportPageProps) {
+  // Protect this route - redirects unauthenticated users
+  useProtectedRoute()
+
   // Mock data - in real app this would be fetched based on the report ID
   const reportData = {
     id: params.id,
