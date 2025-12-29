@@ -5,6 +5,7 @@ import {
   User as FirebaseUser,
   setPersistence,
   browserLocalPersistence,
+  updateProfile,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { AuthPort, User, AuthResult } from '@/application/ports/AuthPort'
@@ -134,7 +135,7 @@ export class FirebaseAuthService implements AuthPort {
 
       // Firebase Auth only supports updating displayName
       if (updates.name) {
-        await currentUser.updateProfile({
+        await updateProfile(currentUser, {
           displayName: updates.name,
         })
       }

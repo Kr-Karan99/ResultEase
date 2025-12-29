@@ -68,7 +68,7 @@ export function Header({ className }: HeaderProps) {
           {/* Actions */}
           <div className="flex items-center space-x-4">
             {!loading && !user ? (
-              <GoogleAuthButton variant="outline" size="sm" />
+              <GoogleAuthButton variant="outline" size="default" />
             ) : !loading && user ? (
               <UserAvatar />
             ) : null}
@@ -115,7 +115,7 @@ export function Header({ className }: HeaderProps) {
           <div className="pt-4 pb-2 border-t border-gray-200">
             <div className="flex flex-col space-y-2">
               {!loading && !user ? (
-                <GoogleAuthButton variant="outline" size="sm" className="w-full" />
+                <GoogleAuthButton variant="outline" size="default" className="w-full" />
               ) : !loading && user ? (
                 <div className="flex items-center gap-3 px-3 py-2">
                   <UserAvatar />
