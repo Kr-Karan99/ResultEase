@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 
 /**
  * Hook to protect routes requiring authentication
- * Redirects to marketing page if user is not authenticated
+ * Redirects to home page if user is not authenticated
  * 
  * Usage in any page/component:
  * ```
@@ -25,9 +25,9 @@ export function useProtectedRoute() {
     // Don't redirect while loading
     if (loading) return
 
-    // Redirect to marketing page if not authenticated
+    // Redirect to home page if not authenticated
     if (!user) {
-      router.push('/marketing')
+      router.push('/')
     }
   }, [user, loading, router])
 
@@ -43,7 +43,7 @@ export function useProtectedRoute() {
  * 
  * Usage in public pages like landing page:
  * ```
- * export default function MarketingPage() {
+ * export default function HomePage() {
  *   usePublicOnlyRoute()
  *   return <YourComponent />
  * }

@@ -19,13 +19,13 @@ export function Header({ className }: HeaderProps) {
   
   const isActive = (path: string) => {
     if (path === '/') {
-      return pathname === '/' || pathname === '/marketing'
+      return pathname === '/'
     }
     return pathname.startsWith(path)
   }
 
   const navigation = [
-    { name: 'Home', href: '/marketing' },
+    { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Upload', href: '/upload' },
     { name: 'Reports', href: '/reports' },
@@ -37,7 +37,7 @@ export function Header({ className }: HeaderProps) {
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
-            <Link href="/marketing" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="flex items-center justify-center w-8 h-8 bg-school-blue text-white rounded-lg font-bold text-sm">
                 RE
               </div>

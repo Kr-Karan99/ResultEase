@@ -141,7 +141,7 @@ export default function AuthPage() {
         <div className="mt-12 text-center space-y-2">
           <p className="text-sm text-gray-600">
             Want to try without signing in?{' '}
-            <Link href="/marketing" className="text-school-blue font-semibold hover:underline">
+            <Link href="/" className="text-school-blue font-semibold hover:underline">
               Back to home
             </Link>
           </p>

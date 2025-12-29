@@ -15,7 +15,7 @@ export function formatNumber(num: number, decimals: number = 2): string {
 /**
  * Format percentage with % symbol
  */
-export function formatPercentage(num: number, decimals: number = 1): string {
+export function formatPercentage(num: number, decimals: number = 2): string {
   return `${num.toFixed(decimals)}%`
 }
 

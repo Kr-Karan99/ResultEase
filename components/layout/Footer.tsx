@@ -37,7 +37,7 @@ export function Footer({ className }: FooterProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Brand */}
             <div className="col-span-1">
-              <Link href="/marketing" className="flex items-center space-x-2 mb-4">
+              <Link href="/" className="flex items-center space-x-2 mb-4">
                 <div className="flex items-center justify-center w-8 h-8 bg-school-blue text-white rounded-lg font-bold text-sm">
                   RE
                 </div>
