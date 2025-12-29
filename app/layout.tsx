@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { generateMetadata } from '@/lib/seo'
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants'
+import { AuthProvider } from '@/context/AuthContext'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -34,7 +35,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )

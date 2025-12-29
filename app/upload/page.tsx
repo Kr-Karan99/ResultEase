@@ -11,10 +11,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { useProtectedRoute } from '@/lib/hooks/useProtectedRoute'
 
 type UploadStep = 'upload' | 'preview' | 'mapping' | 'processing' | 'complete'
 
 export default function UploadPage() {
+  // Protect this route - redirects unauthenticated users
+  useProtectedRoute()
+
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState<UploadStep>('upload')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)

@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
+import { UserAvatar } from '@/components/auth/UserAvatar'
 
 interface HeaderProps {
   className?: string
@@ -12,6 +15,7 @@ interface HeaderProps {
 
 export function Header({ className }: HeaderProps) {
   const pathname = usePathname()
+  const { user, loading } = useAuth()
   
   const isActive = (path: string) => {
     if (path === '/') {
@@ -63,12 +67,11 @@ export function Header({ className }: HeaderProps) {
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm">
-              Sign In
-            </Button>
-            <Button variant="school" size="sm">
-              Get Started
-            </Button>
+            {!loading && !user ? (
+              <GoogleAuthButton variant="outline" size="sm" />
+            ) : !loading && user ? (
+              <UserAvatar />
+            ) : null}
           </div>
 
           {/* Mobile menu button */}
@@ -111,12 +114,16 @@ export function Header({ className }: HeaderProps) {
           ))}
           <div className="pt-4 pb-2 border-t border-gray-200">
             <div className="flex flex-col space-y-2">
-              <Button variant="outline" size="sm" className="w-full">
-                Sign In
-              </Button>
-              <Button variant="school" size="sm" className="w-full">
-                Get Started
-              </Button>
+              {!loading && !user ? (
+                <GoogleAuthButton variant="outline" size="sm" className="w-full" />
+              ) : !loading && user ? (
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <UserAvatar />
+                  <span className="text-sm font-medium text-gray-900 truncate flex-1">
+                    {user.name}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
