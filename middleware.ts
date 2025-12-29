@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jwtVerify } from 'jose'
 
 /**
  * Next.js Middleware for Route Protection
