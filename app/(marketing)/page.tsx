@@ -82,7 +82,7 @@ export default function MarketingPage() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <GoogleAuthButton variant="school-blue" size="lg" />
+              <GoogleAuthButton variant="school" size="lg" />
               <Link href="/demo">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-4">
                   View Demo

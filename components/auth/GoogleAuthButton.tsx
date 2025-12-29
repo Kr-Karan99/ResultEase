@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 
 interface GoogleAuthButtonProps {
-  variant?: 'default' | 'outline' | 'school-blue'
+  variant?: 'default' | 'outline' | 'school'
   size?: 'default' | 'lg'
   className?: string
   showIcon?: boolean

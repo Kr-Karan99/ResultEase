@@ -75,7 +75,7 @@ export default function AuthPage() {
           <CardContent className="space-y-6">
             {/* Google Sign-In Button */}
             <div className="space-y-3">
-              <GoogleAuthButton variant="school-blue" size="lg" className="w-full text-base py-6" />
+              <GoogleAuthButton variant="school" size="lg" className="w-full text-base py-6" />
               <p className="text-xs text-gray-500 text-center">
                 New user? Don't worry! We'll automatically create your account on first sign-in.
               </p>
