@@ -1,5 +1,7 @@
 'use client'
 
+import { use, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,88 +11,190 @@ import { SubjectAverageChart, GradeDistributionChart } from '@/components/charts
 import { PassFailChart } from '@/components/charts/PieChart'
 import { StudentRankingTable } from '@/components/tables/DataTable'
 import { useProtectedRoute } from '@/lib/hooks/useProtectedRoute'
+import { useAuth } from '@/context/AuthContext'
+import { PdfExporter } from '@/features/export/PdfExporter'
 
 interface ReportPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function ReportPage({ params }: ReportPageProps) {
   // Protect this route - redirects unauthenticated users
   useProtectedRoute()
+  
+  // Unwrap params Promise (Next.js 15+ requirement)
+  const { id } = use(params)
+  
+  const router = useRouter()
+  const { user } = useAuth()
+  const [reportData, setReportData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Mock data - in real app this would be fetched based on the report ID
-  const reportData = {
-    id: params.id,
-    title: 'Class 10 Mathematics Mid-term Examination',
-    createdAt: '2024-01-15',
-    createdBy: 'Ms. Sarah Johnson',
-    institution: 'ABC High School',
-    status: 'completed' as const,
+  useEffect(() => {
+    // Try to load report from sessionStorage
+    const storedReport = sessionStorage.getItem(`report-${id}`)
     
-    summary: {
-      totalStudents: 35,
-      totalSubjects: 3,
-      classAverage: 78.5,
-      passPercentage: 88.6,
-      highestPercentage: 95.2,
-      lowestPercentage: 42.1,
-    },
+    if (storedReport) {
+      try {
+        const parsed = JSON.parse(storedReport)
+        console.log('Loaded report from storage:', parsed)
+        
+        // Transform the analysis data to match the expected format
+        const transformedData = {
+          id: parsed.id,
+          title: parsed.title || 'Result Analysis',
+          createdAt: new Date(parsed.createdAt).toLocaleDateString(),
+          createdBy: user?.name || 'User',
+          institution: user?.email || 'School',
+          status: 'completed' as const,
+          fileName: parsed.fileName,
+          
+          summary: parsed.analysis.summary,
+          subjectAnalysis: parsed.analysis.subjectAnalysis,
+          chartData: parsed.analysis.chartData,
+          studentRankings: parsed.analysis.studentRankings,
+          performanceInsights: parsed.analysis.performanceInsights,
+          gradeDistribution: parsed.analysis.gradeDistribution
+        }
+        
+        setReportData(transformedData)
+        setLoading(false)
+      } catch (error) {
+        console.error('Error loading report:', error)
+        setLoading(false)
+      }
+    } else {
+      // Fallback to mock data if no stored report found
+      console.log('No stored report found, using fallback data')
+      setReportData(getMockReportData(id))
+      setLoading(false)
+    }
+  }, [id, user])
 
-    subjectAnalysis: [
-      { subject: 'Mathematics', average: 78.5, highest: 95, lowest: 42, passRate: 85.7, difficulty: 'Moderate' },
-      { subject: 'Science', average: 82.1, highest: 98, lowest: 55, passRate: 91.4, difficulty: 'Easy' },
-      { subject: 'English', average: 75.8, highest: 92, lowest: 48, passRate: 88.6, difficulty: 'Moderate' },
-    ],
+  // Handler for PDF export
+  const handleExportPDF = async () => {
+    try {
+      await PdfExporter.exportToPdf({
+        filename: `${reportData?.title || 'Report'}_${new Date().toISOString().split('T')[0]}`,
+        orientation: 'portrait'
+      })
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      alert('Failed to export PDF. Please try again.')
+    }
+  }
 
-    chartData: {
-      subjectAverages: [
-        { subject: 'Mathematics', average: 78.5 },
-        { subject: 'Science', average: 82.1 },
-        { subject: 'English', average: 75.8 },
-      ],
-      passFailData: [
-        { name: 'Passed', value: 31 },
-        { name: 'Failed', value: 4 },
-      ] as Array<{ name: string; value: number }>,
-      gradeDistribution: [
-        { grade: 'A+', count: 8 },
-        { grade: 'A', count: 12 },
-        { grade: 'B', count: 8 },
-        { grade: 'C', count: 3 },
-        { grade: 'D', count: 2 },
-        { grade: 'F', count: 2 },
-      ],
-    },
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading report...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
 
-    studentRankings: [
-      { rank: 1, name: 'Emma Watson', rollNumber: '001', totalMarks: 285, percentage: 95.0, grade: 'A+' },
-      { rank: 2, name: 'Liam Johnson', rollNumber: '002', totalMarks: 276, percentage: 92.0, grade: 'A+' },
-      { rank: 3, name: 'Olivia Brown', rollNumber: '003', totalMarks: 271, percentage: 90.3, grade: 'A+' },
-      { rank: 4, name: 'Noah Davis', rollNumber: '004', totalMarks: 265, percentage: 88.3, grade: 'A' },
-      { rank: 5, name: 'Sophia Wilson', rollNumber: '005', totalMarks: 258, percentage: 86.0, grade: 'A' },
-      { rank: 6, name: 'Mason Miller', rollNumber: '006', totalMarks: 252, percentage: 84.0, grade: 'A' },
-      { rank: 7, name: 'Isabella Garcia', rollNumber: '007', totalMarks: 246, percentage: 82.0, grade: 'A' },
-      { rank: 8, name: 'William Rodriguez', rollNumber: '008', totalMarks: 240, percentage: 80.0, grade: 'B' },
-      { rank: 9, name: 'Mia Martinez', rollNumber: '009', totalMarks: 234, percentage: 78.0, grade: 'B' },
-      { rank: 10, name: 'James Anderson', rollNumber: '010', totalMarks: 228, percentage: 76.0, grade: 'B' },
-    ],
+  if (!reportData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Report Not Found</h2>
+            <p className="text-gray-600 mb-4">The report you're looking for doesn't exist.</p>
+            <Button onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
 
-    insights: {
-      classPerformance: 'Good',
-      keyInsights: [
-        'Class average is 78.5% (Good performance)',
-        '8 students (22.9%) are high performers',
-        '2 students (5.7%) need additional support',
-        'Science is the strongest subject for students',
+  // Fallback mock data function (for demo purposes)
+  function getMockReportData(id: string) {
+    return {
+      id,
+      title: 'Demo Report - Class 10 Mathematics',
+      createdAt: new Date().toLocaleDateString(),
+      createdBy: 'Demo User',
+      institution: 'Demo School',
+      status: 'completed' as const,
+      fileName: 'demo-file.xlsx',
+      
+      summary: {
+        totalStudents: 35,
+        totalSubjects: 3,
+        classAverage: 78.5,
+        passPercentage: 88.6,
+        highestPercentage: 95.2,
+        lowestPercentage: 42.1,
+      },
+
+      subjectAnalysis: [
+        { subject: 'Mathematics', average: 78.5, highest: 95, lowest: 42, passRate: 85.7, difficulty: 'Moderate' },
+        { subject: 'Science', average: 82.1, highest: 98, lowest: 55, passRate: 91.4, difficulty: 'Easy' },
+        { subject: 'English', average: 75.8, highest: 92, lowest: 48, passRate: 88.6, difficulty: 'Moderate' },
       ],
-      recommendations: [
-        'Provide extra coaching for struggling students in Mathematics',
-        'Consider advanced learning opportunities for high performers',
-        'Focus on improving problem-solving skills in Mathematics',
+
+      chartData: {
+        subjectAverages: [
+          { subject: 'Mathematics', average: 78.5 },
+          { subject: 'Science', average: 82.1 },
+          { subject: 'English', average: 75.8 },
+        ],
+        passFailData: [
+          { name: 'Passed', value: 31 },
+          { name: 'Failed', value: 4 },
+        ],
+        gradeDistribution: [
+          { grade: 'A+', count: 8 },
+          { grade: 'A', count: 12 },
+          { grade: 'B', count: 8 },
+          { grade: 'C', count: 3 },
+          { grade: 'D', count: 2 },
+          { grade: 'F', count: 2 },
+        ],
+      },
+
+      studentRankings: [
+        { rank: 1, name: 'Emma Watson', rollNumber: '001', totalMarks: 285, percentage: 95.0, grade: 'A+' },
+        { rank: 2, name: 'Liam Johnson', rollNumber: '002', totalMarks: 276, percentage: 92.0, grade: 'A+' },
+        { rank: 3, name: 'Olivia Brown', rollNumber: '003', totalMarks: 271, percentage: 90.3, grade: 'A+' },
       ],
-    },
+
+      performanceInsights: {
+        classPerformance: 'Good',
+        topPerformers: 8,
+        strugglingStudents: 2,
+        keyInsights: [
+          'Class average is 78.5% (Good performance)',
+          '8 students (22.9%) are high performers',
+          '2 students (5.7%) need additional support',
+          'Science is the strongest subject for students',
+        ],
+        recommendations: [
+          'Provide extra coaching for struggling students in Mathematics',
+          'Consider advanced learning opportunities for high performers',
+          'Focus on improving problem-solving skills in Mathematics',
+        ],
+      },
+      
+      gradeDistribution: {
+        'A+': 8,
+        'A': 12,
+        'B': 8,
+        'C': 3,
+        'D': 2,
+        'F': 2,
+      }
+    }
   }
 
   return (
@@ -112,12 +216,9 @@ export default function ReportPage({ params }: ReportPageProps) {
                 <Badge variant="success">{reportData.status}</Badge>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline">
+            <div className="flex items-center space-x-2 no-print">
+              <Button variant="outline" onClick={handleExportPDF}>
                 Export PDF
-              </Button>
-              <Button variant="outline">
-                Export Excel
               </Button>
               <Button variant="school">
                 Share Report
@@ -151,7 +252,7 @@ export default function ReportPage({ params }: ReportPageProps) {
               <CardTitle className="text-sm font-medium text-gray-600">Class Average</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{reportData.summary.classAverage}%</div>
+              <div className="text-2xl font-bold text-blue-600">{Number(reportData.summary.classAverage).toFixed(2)}%</div>
             </CardContent>
           </Card>
 
@@ -160,7 +261,7 @@ export default function ReportPage({ params }: ReportPageProps) {
               <CardTitle className="text-sm font-medium text-gray-600">Pass Rate</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{reportData.summary.passPercentage}%</div>
+              <div className="text-2xl font-bold text-green-600">{Number(reportData.summary.passPercentage).toFixed(2)}%</div>
             </CardContent>
           </Card>
 
@@ -169,7 +270,7 @@ export default function ReportPage({ params }: ReportPageProps) {
               <CardTitle className="text-sm font-medium text-gray-600">Highest Score</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{reportData.summary.highestPercentage}%</div>
+              <div className="text-2xl font-bold text-green-600">{Number(reportData.summary.highestPercentage).toFixed(2)}%</div>
             </CardContent>
           </Card>
 
@@ -178,7 +279,7 @@ export default function ReportPage({ params }: ReportPageProps) {
               <CardTitle className="text-sm font-medium text-gray-600">Lowest Score</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{reportData.summary.lowestPercentage}%</div>
+              <div className="text-2xl font-bold text-orange-600">{Number(reportData.summary.lowestPercentage).toFixed(2)}%</div>
             </CardContent>
           </Card>
         </div>
@@ -200,7 +301,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Key Insights</h4>
                   <ul className="space-y-1 text-sm">
-                    {reportData.insights.keyInsights.map((insight, index) => (
+                    {reportData.performanceInsights?.keyInsights?.map((insight: string, index: number) => (
                       <li key={index} className="flex items-start space-x-2">
                         <span className="text-blue-500 mt-1">•</span>
                         <span className="text-gray-600">{insight}</span>
@@ -212,7 +313,7 @@ export default function ReportPage({ params }: ReportPageProps) {
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Recommendations</h4>
                   <ul className="space-y-1 text-sm">
-                    {reportData.insights.recommendations.map((recommendation, index) => (
+                    {reportData.performanceInsights?.recommendations?.map((recommendation: string, index: number) => (
                       <li key={index} className="flex items-start space-x-2">
                         <span className="text-green-500 mt-1">✓</span>
                         <span className="text-gray-600">{recommendation}</span>
@@ -246,13 +347,13 @@ export default function ReportPage({ params }: ReportPageProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {reportData.subjectAnalysis.map((subject, index) => (
+                    {reportData.subjectAnalysis?.map((subject: any, index: number) => (
                       <tr key={index} className="border-b">
                         <td className="py-3 font-medium">{subject.subject}</td>
-                        <td className="py-3 text-center">{subject.average}%</td>
+                        <td className="py-3 text-center">{Number(subject.average).toFixed(2)}%</td>
                         <td className="py-3 text-center text-green-600">{subject.highest}</td>
                         <td className="py-3 text-center text-orange-600">{subject.lowest}</td>
-                        <td className="py-3 text-center">{subject.passRate}%</td>
+                        <td className="py-3 text-center">{Number(subject.passRate).toFixed(2)}%</td>
                         <td className="py-3 text-center">
                           <Badge variant={
                             subject.difficulty === 'Easy' ? 'success' :

@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const PROTECTED_ROUTES = ['/dashboard', '/upload', '/reports']
 
 // Define public routes that should redirect authenticated users away
-const PUBLIC_ONLY_ROUTES = ['/marketing', '/']
+const PUBLIC_ONLY_ROUTES = ['/']
 
 // Routes that don't require protection
 const PUBLIC_ROUTES = ['/demo', '/api']

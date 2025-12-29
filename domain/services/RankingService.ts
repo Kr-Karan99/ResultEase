@@ -18,21 +18,20 @@ export class RankingService {
       return b.totalMarks.getValue() - a.totalMarks.getValue()
     })
     
-    // Assign ranks (handle ties)
+    // Assign ranks (handle ties with dense ranking)
+    // Dense ranking: #1, #1, #1, #2, #2, #3... (ties don't skip ranks)
     let currentRank = 1
     for (let i = 0; i < rankedStudents.length; i++) {
       if (i > 0) {
         const current = rankedStudents[i]
         const previous = rankedStudents[i - 1]
         
-        // If different percentage, update rank
-        if (current.percentage.getValue() !== previous.percentage.getValue()) {
-          currentRank = i + 1
+        // If different percentage or different total marks, increment rank by 1
+        if (current.percentage.getValue() !== previous.percentage.getValue() ||
+            current.totalMarks.getValue() !== previous.totalMarks.getValue()) {
+          currentRank++
         }
-        // If same percentage but different total marks, update rank
-        else if (current.totalMarks.getValue() !== previous.totalMarks.getValue()) {
-          currentRank = i + 1
-        }
+        // If same percentage AND same marks, keep same rank (tie)
       }
       
       rankedStudents[i].rank = currentRank
@@ -54,7 +53,7 @@ export class RankingService {
       return bMarks - aMarks
     })
     
-    // Assign ranks (handle ties)
+    // Assign ranks (handle ties with dense ranking)
     let currentRank = 1
     for (let i = 0; i < studentsWithSubject.length; i++) {
       if (i > 0) {
@@ -62,7 +61,7 @@ export class RankingService {
         const previousMarks = studentsWithSubject[i - 1].marks.get(subjectName)?.getValue() || 0
         
         if (currentMarks !== previousMarks) {
-          currentRank = i + 1
+          currentRank++
         }
       }
       
