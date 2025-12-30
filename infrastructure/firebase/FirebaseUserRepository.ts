@@ -302,15 +302,16 @@ export class FirebaseUserRepository {
 
       const ownerData = ownerDoc.data() as UserProfile
       const currentMembers = ownerData.members || []
+      const sanitizedMemberEmail = this.sanitizeEmail(memberEmail)
 
       // Check if member already exists
-      if (currentMembers.includes(memberEmail.toLowerCase())) {
+      if (currentMembers.includes(sanitizedMemberEmail)) {
         throw new Error('Member already added')
       }
 
-      // Add member to owner's members array
+      // Add member to owner's members array (use sanitized email to match query format)
       await updateDoc(ownerDocRef, {
-        members: [...currentMembers, memberEmail.toLowerCase()],
+        members: [...currentMembers, sanitizedMemberEmail],
         updatedAt: serverTimestamp() as Timestamp,
       })
 
@@ -371,6 +372,7 @@ export class FirebaseUserRepository {
   async checkIfMemberAndGetOwner(memberEmail: string): Promise<string | null> {
     try {
       const sanitizedEmail = this.sanitizeEmail(memberEmail)
+      console.log('Checking member status for:', memberEmail, 'sanitized:', sanitizedEmail)
       
       // First check if profile exists and is already marked as member
       const memberDoc = await getDoc(doc(this.usersCollection, sanitizedEmail))
@@ -378,6 +380,7 @@ export class FirebaseUserRepository {
       if (memberDoc.exists()) {
         const data = memberDoc.data() as UserProfile
         if (data.role === 'member' && data.ownerEmail) {
+          console.log('User is already a member with profile:', data.ownerEmail)
           return data.ownerEmail
         }
       }
@@ -385,9 +388,12 @@ export class FirebaseUserRepository {
       // If no profile exists, search for this email in owners' members arrays
       // Note: This requires querying all documents - not efficient for large scale
       // In production, consider using a separate "memberships" collection
-      const { getDocs, query, where, collection: firestoreCollection } = await import('firebase/firestore')
+      const { getDocs, query, where } = await import('firebase/firestore')
       
       // Query for owners who have this email in their members array
+      // sanitizedEmail is already lowercase and trimmed
+      console.log('Searching for member email in owners array:', sanitizedEmail)
+      
       const usersQuery = query(
         this.usersCollection,
         where('members', 'array-contains', sanitizedEmail)
@@ -395,14 +401,17 @@ export class FirebaseUserRepository {
       
       const querySnapshot = await getDocs(usersQuery)
       
+      console.log('Query results count:', querySnapshot.size)
+      
       if (!querySnapshot.empty) {
         // Found an owner who has this email as member
         const ownerDoc = querySnapshot.docs[0]
         const ownerData = ownerDoc.data() as UserProfile
-        console.log('Found owner for member:', ownerData.email)
+        console.log('Found owner for member:', ownerData.email, 'Members array:', ownerData.members)
         return ownerData.email
       }
 
+      console.log('No owner found for member:', memberEmail)
       return null
     } catch (error) {
       console.error('Error checking member status:', error)
