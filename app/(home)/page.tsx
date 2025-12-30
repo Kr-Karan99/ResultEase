@@ -94,7 +94,7 @@ export default function HomePage() {
             </div>
 
             <p className="text-sm text-gray-500">
-              No signup required • Works with any Excel format • Instant results
+              Free to start • Works with any Excel format • Instant results
             </p>
           </div>
         </div>

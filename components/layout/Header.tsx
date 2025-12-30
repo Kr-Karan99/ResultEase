@@ -29,6 +29,7 @@ export function Header({ className }: HeaderProps) {
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Upload', href: '/upload' },
     { name: 'Reports', href: '/reports' },
+    { name: 'Pricing', href: '/pricing' },
   ]
 
   return (
