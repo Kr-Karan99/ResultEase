@@ -13,6 +13,9 @@ import { StudentRankingTable } from '@/components/tables/DataTable'
 import { useProtectedRoute } from '@/lib/hooks/useProtectedRoute'
 import { useAuth } from '@/context/AuthContext'
 import { PdfExporter } from '@/features/export/PdfExporter'
+import { firebaseReportRepository } from '@/infrastructure/firebase/FirebaseReportRepository'
+import { firebaseUserRepository } from '@/infrastructure/firebase/FirebaseUserRepository'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface ReportPageProps {
   params: Promise<{
@@ -23,55 +26,121 @@ interface ReportPageProps {
 export default function ReportPage({ params }: ReportPageProps) {
   // Protect this route - redirects unauthenticated users
   useProtectedRoute()
-  
+
   // Unwrap params Promise (Next.js 15+ requirement)
   const { id } = use(params)
   
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, firebaseUser } = useAuth()
   const [reportData, setReportData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [saveMessage, setSaveMessage] = useState<string>('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteStatus, setDeleteStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   useEffect(() => {
-    // Try to load report from sessionStorage
-    const storedReport = sessionStorage.getItem(`report-${id}`)
-    
-    if (storedReport) {
-      try {
-        const parsed = JSON.parse(storedReport)
-        console.log('Loaded report from storage:', parsed)
-        
-        // Transform the analysis data to match the expected format
-        const transformedData = {
-          id: parsed.id,
-          title: parsed.title || 'Result Analysis',
-          createdAt: new Date(parsed.createdAt).toLocaleDateString(),
-          createdBy: user?.name || 'User',
-          institution: user?.email || 'School',
-          status: 'completed' as const,
-          fileName: parsed.fileName,
+    const loadReport = async () => {
+      // First, try to load from Firestore (saved report)
+      if (firebaseUser?.email && id.startsWith('report-')) {
+        try {
+          // Try loading from current user's reports first
+          let savedReport = await firebaseReportRepository.getReport(firebaseUser.email, id)
           
-          summary: parsed.analysis.summary,
-          subjectAnalysis: parsed.analysis.subjectAnalysis,
-          chartData: parsed.analysis.chartData,
-          studentRankings: parsed.analysis.studentRankings,
-          performanceInsights: parsed.analysis.performanceInsights,
-          gradeDistribution: parsed.analysis.gradeDistribution
+          // If not found, try loading from organization members
+          if (!savedReport && user) {
+            const userProfile = await firebaseUserRepository.getUserProfile(firebaseUser.email)
+            if (userProfile) {
+              let memberEmails: string[] = []
+              
+              if (userProfile.role === 'owner' && userProfile.members) {
+                memberEmails = userProfile.members
+              } else if (userProfile.role === 'member' && userProfile.ownerEmail) {
+                const ownerProfile = await firebaseUserRepository.getUserProfile(userProfile.ownerEmail)
+                if (ownerProfile && ownerProfile.members) {
+                  memberEmails = [userProfile.ownerEmail, ...ownerProfile.members]
+                }
+              }
+              
+              // Try to find report in organization members
+              for (const memberEmail of memberEmails) {
+                try {
+                  savedReport = await firebaseReportRepository.getReport(memberEmail, id)
+                  if (savedReport) break
+                } catch (err) {
+                  // Continue searching
+                }
+              }
+            }
+          }
+          
+          if (savedReport) {
+            const report = savedReport.reportData
+            const createdAt = savedReport.createdAt instanceof Date 
+              ? savedReport.createdAt 
+              : (savedReport.createdAt as any)?.toDate?.() || new Date()
+            
+            const isOwnReport = savedReport.createdBy === firebaseUser.email.toLowerCase()
+            
+            setReportData({
+              ...report,
+              createdAt: createdAt.toLocaleDateString(),
+              isSaved: true,
+              savedReportId: savedReport.id,
+              isOwnReport: isOwnReport,
+              reportOwnerEmail: savedReport.createdBy,
+            })
+            setLoading(false)
+            return
+          }
+        } catch (error) {
+          console.error('Error loading saved report:', error)
         }
-        
-        setReportData(transformedData)
-        setLoading(false)
-      } catch (error) {
-        console.error('Error loading report:', error)
-        setLoading(false)
       }
-    } else {
+
+      // Try to load report from sessionStorage
+      const storedReport = sessionStorage.getItem(`report-${id}`)
+      
+      if (storedReport) {
+        try {
+          const parsed = JSON.parse(storedReport)
+          console.log('Loaded report from storage:', parsed)
+          
+          // Transform the analysis data to match the expected format
+          const transformedData = {
+            id: parsed.id,
+            title: parsed.title || 'Result Analysis',
+            createdAt: new Date(parsed.createdAt).toLocaleDateString(),
+            createdBy: user?.name || 'User',
+            institution: user?.email || 'School',
+            status: 'completed' as const,
+            fileName: parsed.fileName,
+            
+            summary: parsed.analysis.summary,
+            subjectAnalysis: parsed.analysis.subjectAnalysis,
+            chartData: parsed.analysis.chartData,
+            studentRankings: parsed.analysis.studentRankings,
+            performanceInsights: parsed.analysis.performanceInsights,
+            gradeDistribution: parsed.analysis.gradeDistribution
+          }
+          
+          setReportData(transformedData)
+          setLoading(false)
+          return
+        } catch (error) {
+          console.error('Error loading report:', error)
+        }
+      }
+      
       // Fallback to mock data if no stored report found
       console.log('No stored report found, using fallback data')
       setReportData(getMockReportData(id))
       setLoading(false)
     }
-  }, [id, user])
+
+    loadReport()
+  }, [id, user, firebaseUser])
 
   // Handler for PDF export
   const handleExportPDF = async () => {
@@ -83,6 +152,83 @@ export default function ReportPage({ params }: ReportPageProps) {
     } catch (error) {
       console.error('Error exporting PDF:', error)
       alert('Failed to export PDF. Please try again.')
+    }
+  }
+
+  // Handler for saving report
+  const handleSaveReport = async () => {
+    if (!firebaseUser?.email || !reportData) {
+      setSaveStatus('error')
+      setSaveMessage('Unable to save report. Please ensure you are logged in.')
+      return
+    }
+
+    setSaving(true)
+    setSaveStatus('idle')
+    setSaveMessage('')
+
+    try {
+      await firebaseReportRepository.saveReport(firebaseUser.email, {
+        id: reportData.id || id,
+        title: reportData.title || 'Result Analysis',
+        createdAt: reportData.createdAt || new Date().toISOString(),
+        createdBy: reportData.createdBy || user?.name || 'User',
+        institution: reportData.institution || user?.email || 'School',
+        status: reportData.status || 'completed',
+        fileName: reportData.fileName,
+        summary: reportData.summary,
+        subjectAnalysis: reportData.subjectAnalysis,
+        chartData: reportData.chartData,
+        studentRankings: reportData.studentRankings,
+        performanceInsights: reportData.performanceInsights,
+        gradeDistribution: reportData.gradeDistribution,
+      })
+
+      setSaveStatus('success')
+      setSaveMessage('Report saved successfully! You can view it in your dashboard.')
+      
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        setSaveStatus('idle')
+        setSaveMessage('')
+      }, 5000)
+    } catch (error) {
+      console.error('Error saving report:', error)
+      setSaveStatus('error')
+      setSaveMessage(error instanceof Error ? error.message : 'Failed to save report. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Handler for deleting saved report
+  const handleDeleteReport = async () => {
+    if (!firebaseUser?.email || !reportData?.savedReportId || !reportData?.isOwnReport) {
+      return
+    }
+
+    if (!confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
+      return
+    }
+
+    setDeleting(true)
+    setDeleteStatus('idle')
+
+    try {
+      await firebaseReportRepository.deleteReport(firebaseUser.email, reportData.savedReportId)
+      setDeleteStatus('success')
+      setSaveMessage('Report deleted successfully!')
+      
+      // Redirect to reports page after 1 second
+      setTimeout(() => {
+        router.push('/reports')
+      }, 1000)
+    } catch (error) {
+      console.error('Error deleting report:', error)
+      setDeleteStatus('error')
+      setSaveMessage(error instanceof Error ? error.message : 'Failed to delete report. Please try again.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -125,66 +271,66 @@ export default function ReportPage({ params }: ReportPageProps) {
       createdAt: new Date().toLocaleDateString(),
       createdBy: 'Demo User',
       institution: 'Demo School',
-      status: 'completed' as const,
+    status: 'completed' as const,
       fileName: 'demo-file.xlsx',
-      
-      summary: {
-        totalStudents: 35,
-        totalSubjects: 3,
-        classAverage: 78.5,
-        passPercentage: 88.6,
-        highestPercentage: 95.2,
-        lowestPercentage: 42.1,
-      },
+    
+    summary: {
+      totalStudents: 35,
+      totalSubjects: 3,
+      classAverage: 78.5,
+      passPercentage: 88.6,
+      highestPercentage: 95.2,
+      lowestPercentage: 42.1,
+    },
 
-      subjectAnalysis: [
-        { subject: 'Mathematics', average: 78.5, highest: 95, lowest: 42, passRate: 85.7, difficulty: 'Moderate' },
-        { subject: 'Science', average: 82.1, highest: 98, lowest: 55, passRate: 91.4, difficulty: 'Easy' },
-        { subject: 'English', average: 75.8, highest: 92, lowest: 48, passRate: 88.6, difficulty: 'Moderate' },
+    subjectAnalysis: [
+      { subject: 'Mathematics', average: 78.5, highest: 95, lowest: 42, passRate: 85.7, difficulty: 'Moderate' },
+      { subject: 'Science', average: 82.1, highest: 98, lowest: 55, passRate: 91.4, difficulty: 'Easy' },
+      { subject: 'English', average: 75.8, highest: 92, lowest: 48, passRate: 88.6, difficulty: 'Moderate' },
+    ],
+
+    chartData: {
+      subjectAverages: [
+        { subject: 'Mathematics', average: 78.5 },
+        { subject: 'Science', average: 82.1 },
+        { subject: 'English', average: 75.8 },
       ],
+      passFailData: [
+        { name: 'Passed', value: 31 },
+        { name: 'Failed', value: 4 },
+        ],
+      gradeDistribution: [
+        { grade: 'A+', count: 8 },
+        { grade: 'A', count: 12 },
+        { grade: 'B', count: 8 },
+        { grade: 'C', count: 3 },
+        { grade: 'D', count: 2 },
+        { grade: 'F', count: 2 },
+      ],
+    },
 
-      chartData: {
-        subjectAverages: [
-          { subject: 'Mathematics', average: 78.5 },
-          { subject: 'Science', average: 82.1 },
-          { subject: 'English', average: 75.8 },
-        ],
-        passFailData: [
-          { name: 'Passed', value: 31 },
-          { name: 'Failed', value: 4 },
-        ],
-        gradeDistribution: [
-          { grade: 'A+', count: 8 },
-          { grade: 'A', count: 12 },
-          { grade: 'B', count: 8 },
-          { grade: 'C', count: 3 },
-          { grade: 'D', count: 2 },
-          { grade: 'F', count: 2 },
-        ],
-      },
-
-      studentRankings: [
-        { rank: 1, name: 'Emma Watson', rollNumber: '001', totalMarks: 285, percentage: 95.0, grade: 'A+' },
-        { rank: 2, name: 'Liam Johnson', rollNumber: '002', totalMarks: 276, percentage: 92.0, grade: 'A+' },
-        { rank: 3, name: 'Olivia Brown', rollNumber: '003', totalMarks: 271, percentage: 90.3, grade: 'A+' },
+    studentRankings: [
+      { rank: 1, name: 'Emma Watson', rollNumber: '001', totalMarks: 285, percentage: 95.0, grade: 'A+' },
+      { rank: 2, name: 'Liam Johnson', rollNumber: '002', totalMarks: 276, percentage: 92.0, grade: 'A+' },
+      { rank: 3, name: 'Olivia Brown', rollNumber: '003', totalMarks: 271, percentage: 90.3, grade: 'A+' },
       ],
 
       performanceInsights: {
-        classPerformance: 'Good',
+      classPerformance: 'Good',
         topPerformers: 8,
         strugglingStudents: 2,
-        keyInsights: [
-          'Class average is 78.5% (Good performance)',
-          '8 students (22.9%) are high performers',
-          '2 students (5.7%) need additional support',
-          'Science is the strongest subject for students',
-        ],
-        recommendations: [
-          'Provide extra coaching for struggling students in Mathematics',
-          'Consider advanced learning opportunities for high performers',
-          'Focus on improving problem-solving skills in Mathematics',
-        ],
-      },
+      keyInsights: [
+        'Class average is 78.5% (Good performance)',
+        '8 students (22.9%) are high performers',
+        '2 students (5.7%) need additional support',
+        'Science is the strongest subject for students',
+      ],
+      recommendations: [
+        'Provide extra coaching for struggling students in Mathematics',
+        'Consider advanced learning opportunities for high performers',
+        'Focus on improving problem-solving skills in Mathematics',
+      ],
+    },
       
       gradeDistribution: {
         'A+': 8,
@@ -220,12 +366,52 @@ export default function ReportPage({ params }: ReportPageProps) {
               <Button variant="outline" onClick={handleExportPDF}>
                 Export PDF
               </Button>
-              <Button variant="school">
-                Share Report
-              </Button>
+              {reportData?.isSaved ? (
+                reportData?.isOwnReport ? (
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleDeleteReport}
+                    disabled={deleting}
+                  >
+                    {deleting ? 'Deleting...' : 'Delete Report'}
+                  </Button>
+                ) : (
+                  <Badge variant="outline" className="px-4 py-2">
+                    Organization Report
+                  </Badge>
+                )
+              ) : (
+                <Button 
+                  variant="school" 
+                  onClick={handleSaveReport}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Report'}
+                </Button>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Save/Delete Status Alert */}
+        {(saveStatus !== 'idle' || deleteStatus !== 'idle') && (
+          <div className="mb-6">
+            <Alert className={
+              (saveStatus === 'success' || deleteStatus === 'success') 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-red-50 border-red-200'
+            }>
+              <AlertDescription className={
+                (saveStatus === 'success' || deleteStatus === 'success') 
+                  ? 'text-green-800' 
+                  : 'text-red-800'
+              }>
+                {(saveStatus === 'success' || deleteStatus === 'success') ? '✅ ' : '❌ '}
+                {saveMessage}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">

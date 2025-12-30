@@ -1,21 +1,84 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Footer } from '@/components/layout/Footer'
+import { pricingService } from '@/lib/services/PricingService'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+
+interface PlanPricing {
+  monthly: number
+  annual: number
+}
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [accountType, setAccountType] = useState<'independent' | 'institute'>('independent')
   const [selectedPlan, setSelectedPlan] = useState<string>('Go')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Pricing state - fetched from Firestore
+  const [pricing, setPricing] = useState<{
+    goIndependent: PlanPricing | null
+    goInstitute: PlanPricing | null
+    premiumIndependent: PlanPricing | null
+    premiumInstitute: PlanPricing | null
+  }>({
+    goIndependent: null,
+    goInstitute: null,
+    premiumIndependent: null,
+    premiumInstitute: null,
+  })
 
-  // Independent Creator Pricing
-  const independentPlans = [
-    {
+  // Fetch pricing data on mount
+  useEffect(() => {
+    const fetchPricing = async () => {
+      setLoading(true)
+      setError(null)
+      
+      try {
+        const [goIndependent, goInstitute, premiumIndependent, premiumInstitute] = await Promise.all([
+          pricingService.getPlanPricing('go', 'independent'),
+          pricingService.getPlanPricing('go', 'institute'),
+          pricingService.getPlanPricing('premium', 'independent'),
+          pricingService.getPlanPricing('premium', 'institute'),
+        ])
+
+        setPricing({
+          goIndependent,
+          goInstitute,
+          premiumIndependent,
+          premiumInstitute,
+        })
+      } catch (err) {
+        console.error('Error fetching pricing:', err)
+        setError('Failed to load pricing. Please refresh the page.')
+        // Set fallback values (current hardcoded prices)
+        setPricing({
+          goIndependent: { monthly: 299, annual: 2990 },
+          goInstitute: { monthly: 999, annual: 9990 },
+          premiumIndependent: { monthly: 599, annual: 5990 },
+          premiumInstitute: { monthly: 1999, annual: 19990 },
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPricing()
+  }, [])
+
+  // Get plan configurations (features, descriptions, etc.)
+  // Prices are fetched from Firestore and injected dynamically
+  const getPlanConfig = () => {
+    const freePlan = {
       name: 'Free',
-      description: 'Perfect for small tuitions and individual teachers',
+      description: accountType === 'independent' 
+        ? 'Perfect for small tuitions and individual teachers'
+        : 'Perfect for small schools getting started',
       monthlyPrice: 0,
       annualPrice: 0,
       features: [
@@ -28,109 +91,91 @@ export default function PricingPage() {
       ],
       limitations: ['Limited to 15 students', '2 reports/month'],
       popular: false,
-    },
-    {
+    }
+
+    const goPlan = {
       name: 'Go',
-      description: 'Ideal for growing academies and small schools',
-      monthlyPrice: 299,
-      annualPrice: 2990,
-      features: [
-        'Up to 200 students per analysis',
-        'Advanced analytics',
-        'Subject-wise performance',
-        'Grade distribution charts',
-        'Unlimited reports',
-        'Priority email support',
-        'Team collaboration (up to 3 members)',
-        'Custom report templates',
-      ],
+      description: accountType === 'independent'
+        ? 'Ideal for growing academies and small schools'
+        : 'Ideal for medium-sized schools',
+      monthlyPrice: accountType === 'independent'
+        ? (pricing.goIndependent?.monthly ?? 299)
+        : (pricing.goInstitute?.monthly ?? 999),
+      annualPrice: accountType === 'independent'
+        ? (pricing.goIndependent?.annual ?? 2990)
+        : (pricing.goInstitute?.annual ?? 9990),
+      features: accountType === 'independent'
+        ? [
+            'Up to 200 students per analysis',
+            'Advanced analytics',
+            'Subject-wise performance',
+            'Grade distribution charts',
+            'Unlimited reports',
+            'Priority email support',
+            'Team collaboration (up to 3 members)',
+            'Custom report templates',
+          ]
+        : [
+            'Up to 500 students per analysis',
+            'Advanced analytics',
+            'Subject-wise performance',
+            'Grade distribution charts',
+            'Unlimited reports',
+            'Priority email support',
+            'Team collaboration (up to 10 members)',
+            'Custom report templates',
+            'Bulk upload support',
+          ],
       limitations: [],
       popular: true,
-    },
-    {
-      name: 'Premium',
-      description: 'For established academies with high volume',
-      monthlyPrice: 599,
-      annualPrice: 5990,
-      features: [
-        'Unlimited students per analysis',
-        'All Go features',
-        'Historical data tracking',
-        'Multi-year comparisons',
-        'Advanced visualizations',
-        'Priority support (24h response)',
-        'Unlimited team members',
-        'API access',
-        'Custom branding',
-        'Dedicated account manager',
-      ],
-      limitations: [],
-      popular: false,
-    },
-  ]
+    }
 
-  // Institute Pricing
-  const institutePlans = [
-    {
-      name: 'Free',
-      description: 'Perfect for small schools getting started',
-      monthlyPrice: 0,
-      annualPrice: 0,
-      features: [
-        'Up to 15 students per analysis',
-        'Basic result analysis',
-        'Student rankings',
-        'PDF report export',
-        'Up to 2 reports per month',
-        'Email support',
-      ],
-      limitations: ['Limited to 15 students', '2 reports/month'],
-      popular: false,
-    },
-    {
-      name: 'Go',
-      description: 'Ideal for medium-sized schools',
-      monthlyPrice: 999,
-      annualPrice: 9990,
-      features: [
-        'Up to 500 students per analysis',
-        'Advanced analytics',
-        'Subject-wise performance',
-        'Grade distribution charts',
-        'Unlimited reports',
-        'Priority email support',
-        'Team collaboration (up to 10 members)',
-        'Custom report templates',
-        'Bulk upload support',
-      ],
-      limitations: [],
-      popular: true,
-    },
-    {
+    const premiumPlan = {
       name: 'Premium',
-      description: 'For large schools and educational groups',
-      monthlyPrice: 1999,
-      annualPrice: 19990,
-      features: [
-        'Unlimited students per analysis',
-        'All Go features',
-        'Historical data tracking',
-        'Multi-year comparisons',
-        'Advanced visualizations',
-        'Priority support (24h response)',
-        'Unlimited team members',
-        'API access',
-        'Custom branding',
-        'Dedicated account manager',
-        'SIS integration',
-        'White-label options',
-      ],
+      description: accountType === 'independent'
+        ? 'For established academies with high volume'
+        : 'For large schools and educational groups',
+      monthlyPrice: accountType === 'independent'
+        ? (pricing.premiumIndependent?.monthly ?? 599)
+        : (pricing.premiumInstitute?.monthly ?? 1999),
+      annualPrice: accountType === 'independent'
+        ? (pricing.premiumIndependent?.annual ?? 5990)
+        : (pricing.premiumInstitute?.annual ?? 19990),
+      features: accountType === 'independent'
+        ? [
+            'Unlimited students per analysis',
+            'All Go features',
+            'Historical data tracking',
+            'Multi-year comparisons',
+            'Advanced visualizations',
+            'Priority support (24h response)',
+            'Unlimited team members',
+            'API access',
+            'Custom branding',
+            'Dedicated account manager',
+          ]
+        : [
+            'Unlimited students per analysis',
+            'All Go features',
+            'Historical data tracking',
+            'Multi-year comparisons',
+            'Advanced visualizations',
+            'Priority support (24h response)',
+            'Unlimited team members',
+            'API access',
+            'Custom branding',
+            'Dedicated account manager',
+            'SIS integration',
+            'White-label options',
+          ],
       limitations: [],
       popular: false,
-    },
-  ]
+    }
 
-  const plans = accountType === 'independent' ? independentPlans : institutePlans
+    return [freePlan, goPlan, premiumPlan]
+  }
+
+  const plans = getPlanConfig()
 
   const calculateSavings = (monthly: number, annual: number) => {
     if (monthly === 0) return 0
@@ -210,10 +255,29 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* Error Alert */}
+      {error && (
+        <section className="py-4 px-4">
+          <div className="max-w-7xl mx-auto">
+            <Alert className="bg-yellow-50 border-yellow-200">
+              <AlertDescription className="text-yellow-800">
+                ⚠️ {error}
+              </AlertDescription>
+            </Alert>
+          </div>
+        </section>
+      )}
+
       {/* Pricing Cards */}
       <section className="py-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading pricing...</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-8">
             {plans.map((plan, index) => {
               const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.annualPrice
               const savings = calculateSavings(plan.monthlyPrice, plan.annualPrice)
@@ -291,7 +355,8 @@ export default function PricingPage() {
                 </Card>
               )
             })}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 
