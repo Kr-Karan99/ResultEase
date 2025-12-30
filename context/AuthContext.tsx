@@ -43,11 +43,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Subscribe to Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+      if (firebaseUser && firebaseUser.email) {
         // User is signed in
         setFirebaseUser(firebaseUser)
-        const appUser = await firebaseAuthService.getCurrentUser()
-        setUser(appUser)
+        
+        try {
+          // Check if user profile exists in Firestore
+          let existingProfile = await firebaseUserRepository.getUserProfile(firebaseUser.email)
+          
+          if (!existingProfile) {
+            // Profile doesn't exist - check if this email is added as a member by any owner
+            console.log('Profile not found, checking if user is a member:', firebaseUser.email)
+            const ownerEmail = await firebaseUserRepository.checkIfMemberAndGetOwner(firebaseUser.email)
+            
+            if (ownerEmail) {
+              // User is a member! Create their profile from owner's data
+              console.log('User is a member of:', ownerEmail)
+              await firebaseUserRepository.createMemberProfile(
+                firebaseUser.email,
+                firebaseUser.uid,
+                firebaseUser.displayName || 'Member',
+                ownerEmail,
+                firebaseUser.photoURL || undefined
+              )
+              console.log('Member profile created successfully')
+              // Fetch the newly created profile
+              existingProfile = await firebaseUserRepository.getUserProfile(firebaseUser.email)
+            } else {
+              // Not a member, create initial profile for new user
+              console.log('Creating initial profile for new user:', firebaseUser.email)
+              await firebaseUserRepository.createInitialUserProfile(
+                firebaseUser.uid,
+                firebaseUser.email,
+                firebaseUser.displayName || 'User',
+                firebaseUser.photoURL || undefined
+              )
+              console.log('Initial profile created successfully')
+            }
+          } else {
+            // Update last login for existing users
+            await firebaseUserRepository.updateLastLogin(firebaseUser.email)
+          }
+          
+          // Get the app user (mapped from Firebase user)
+          const appUser = await firebaseAuthService.getCurrentUser()
+          setUser(appUser)
+        } catch (error) {
+          console.error('Error managing user profile in AuthContext:', error)
+          // Still set the Firebase user even if profile creation fails
+          const appUser = await firebaseAuthService.getCurrentUser()
+          setUser(appUser)
+        }
       } else {
         // User is signed out
         setFirebaseUser(null)
