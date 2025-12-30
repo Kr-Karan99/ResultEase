@@ -18,15 +18,11 @@ export function Footer({ className }: FooterProps) {
       { name: 'Documentation', href: '/docs' },
     ],
     support: [
-      { name: 'Help Center', href: '/help' },
       { name: 'Contact', href: '/contact' },
-      { name: 'Guides', href: '/guides' },
       { name: 'FAQ', href: '/faq' },
     ],
     company: [
       { name: 'About', href: '/about' },
-      { name: 'Blog', href: '/blog' },
-      { name: 'Careers', href: '/careers' },
       { name: 'Privacy', href: '/privacy' },
     ],
   }
