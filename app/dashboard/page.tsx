@@ -11,6 +11,7 @@ import { Footer } from '@/components/layout/Footer'
 import { useProtectedRoute } from '@/lib/hooks/useProtectedRoute'
 import { useAuth } from '@/context/AuthContext'
 import { firebaseUserRepository, UserProfile } from '@/infrastructure/firebase/FirebaseUserRepository'
+import { firebaseReportRepository, SavedReport } from '@/infrastructure/firebase/FirebaseReportRepository'
 
 export default function DashboardPage() {
   // Protect this route - redirects unauthenticated users
@@ -20,6 +21,9 @@ export default function DashboardPage() {
   const { user, firebaseUser, loading: authLoading } = useAuth()
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([])
+  const [loadingReports, setLoadingReports] = useState(true)
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null)
 
   // Fetch user profile from Firestore
   useEffect(() => {
@@ -40,6 +44,73 @@ export default function DashboardPage() {
       fetchUserProfile()
     }
   }, [firebaseUser, authLoading])
+
+  // Fetch saved reports
+  const fetchSavedReports = async () => {
+    if (firebaseUser && firebaseUser.email) {
+      try {
+        const reports = await firebaseReportRepository.getUserReports(firebaseUser.email, 10)
+        setSavedReports(reports)
+      } catch (error) {
+        console.error('Error fetching saved reports:', error)
+      } finally {
+        setLoadingReports(false)
+      }
+    } else {
+      setLoadingReports(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!authLoading && firebaseUser) {
+      fetchSavedReports()
+    }
+  }, [firebaseUser, authLoading])
+
+  // Refresh reports when page becomes visible (user might have deleted a report)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && firebaseUser && !authLoading) {
+        fetchSavedReports()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [firebaseUser, authLoading])
+
+  // Handle delete report
+  const handleDeleteReport = async (reportId: string, reportTitle: string) => {
+    if (!firebaseUser?.email) {
+      return
+    }
+
+    if (!confirm(`Are you sure you want to delete "${reportTitle}"? This action cannot be undone.`)) {
+      return
+    }
+
+    setDeletingReportId(reportId)
+
+    try {
+      await firebaseReportRepository.deleteReport(firebaseUser.email, reportId)
+      // Remove from local state immediately for better UX
+      setSavedReports(prevReports => prevReports.filter(report => report.id !== reportId))
+    } catch (error) {
+      console.error('Error deleting report:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete report. Please try again.')
+      // Refresh reports list on error
+      if (firebaseUser.email) {
+        try {
+          const reports = await firebaseReportRepository.getUserReports(firebaseUser.email, 10)
+          setSavedReports(reports)
+        } catch (refreshError) {
+          console.error('Error refreshing reports:', refreshError)
+        }
+      }
+    } finally {
+      setDeletingReportId(null)
+    }
+  }
 
   // Redirect to onboarding if not completed
   useEffect(() => {
@@ -243,7 +314,12 @@ export default function DashboardPage() {
                 <CardDescription>Your latest actions and updates</CardDescription>
               </CardHeader>
               <CardContent>
-                {stats.totalReports === 0 ? (
+                {loadingReports ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading reports...</p>
+                  </div>
+                ) : savedReports.length === 0 && stats.totalReports === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-6xl mb-4">🚀</div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -260,17 +336,100 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-xl">📊</span>
+                    {savedReports.length > 0 && (
+                      <>
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Saved Reports</h3>
+                        {savedReports.map((report) => {
+                          const createdAt = report.createdAt instanceof Date 
+                            ? report.createdAt 
+                            : (report.createdAt as any)?.toDate?.() || new Date()
+                          
+                          return (
+                            <div
+                              key={report.id}
+                              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                              onClick={() => router.push(`/reports/${report.id}`)}
+                            >
+                              <div className="flex items-center space-x-4 flex-1">
+                                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <span className="text-xl">📊</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {report.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {createdAt.toLocaleDateString()} • {report.reportData.summary?.totalStudents || 0} students
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/reports/${report.id}`)
+                                  }}
+                                  className="ml-2"
+                                >
+                                  View
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteReport(report.id, report.title)
+                                  }}
+                                  disabled={deletingReportId === report.id}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete report"
+                                >
+                                  {deletingReportId === report.id ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                  ) : (
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {savedReports.length >= 10 && (
+                          <Link href="/reports" className="block">
+                            <Button variant="outline" className="w-full">
+                              View All Reports
+                            </Button>
+                          </Link>
+                        )}
+                      </>
+                    )}
+                    {stats.totalReports > 0 && savedReports.length === 0 && (
+                      <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-xl">📊</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {stats.totalReports} {stats.totalReports === 1 ? 'report' : 'reports'} generated
+                          </p>
+                          <p className="text-xs text-gray-500">Save reports to view them here</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {stats.totalReports} {stats.totalReports === 1 ? 'report' : 'reports'} generated
-                        </p>
-                        <p className="text-xs text-gray-500">Keep up the great work!</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </CardContent>
