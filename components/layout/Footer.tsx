@@ -1,5 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 interface FooterProps {
@@ -37,10 +38,14 @@ export function Footer({ className }: FooterProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Brand */}
             <div className="col-span-1">
-              <Link href="/" className="flex items-center space-x-2 mb-4">
-                <div className="flex items-center justify-center w-8 h-8 bg-school-blue text-white rounded-lg font-bold text-sm">
-                  RE
-                </div>
+              <Link href="/" className="flex items-center space-x-3 mb-4">
+                <Image
+                  src="/result_ease_logo.png"
+                  alt="ResultEase Logo"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                />
                 <span className="font-semibold text-xl text-gray-900">
                   ResultEase
                 </span>

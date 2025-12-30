@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 
 /**
  * Hook to protect routes requiring authentication
- * Redirects to home page if user is not authenticated
+ * Redirects to login page if user is not authenticated
  * 
  * Usage in any page/component:
  * ```
@@ -25,11 +25,15 @@ export function useProtectedRoute() {
     // Don't redirect while loading
     if (loading) return
 
-    // Redirect to home page if not authenticated
+    // Redirect to login page if not authenticated
     if (!user) {
-      router.push('/')
+      // Store the intended destination to redirect back after login
+      if (pathname) {
+        sessionStorage.setItem('redirectAfterLogin', pathname)
+      }
+      router.push('/login')
     }
-  }, [user, loading, router])
+  }, [user, loading, router, pathname])
 
   // Show nothing while checking auth or redirecting
   if (loading || !user) {

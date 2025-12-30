@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { firebaseAuthService } from '@/infrastructure/firebase/FirebaseAuthService'
+import { firebaseUserRepository } from '@/infrastructure/firebase/FirebaseUserRepository'
 import { User } from '@/application/ports/AuthPort'
 
 /**
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Handle Google Sign-In
    * Firebase handles both new signup and existing login automatically
+   * Creates initial user profile in Firestore if new user
    */
   const loginWithGoogle = async () => {
     try {
@@ -71,6 +73,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!result.success) {
         console.error('Sign-in error:', result.error)
         throw new Error(result.error || 'Failed to sign in')
+      }
+
+      // Get the signed-in user
+      const currentUser = auth.currentUser
+      if (currentUser && currentUser.email) {
+        try {
+          // Check if user profile exists in Firestore (using email as document ID)
+          let existingProfile = await firebaseUserRepository.getUserProfile(currentUser.email)
+          
+          if (!existingProfile) {
+            // Check if this email is added as a member by any owner
+            console.log('Checking if user is a member:', currentUser.email)
+            
+            // Search for owners who have this email in their members array
+            // For now, we'll handle this in the login page
+            // Here we just create initial profile
+            console.log('Creating initial profile for new user:', currentUser.email)
+            await firebaseUserRepository.createInitialUserProfile(
+              currentUser.uid,
+              currentUser.email,
+              currentUser.displayName || 'User',
+              currentUser.photoURL || undefined
+            )
+            console.log('Initial profile created successfully')
+          } else {
+            // Update last login for existing users
+            console.log('Updating last login for existing user:', currentUser.email)
+            await firebaseUserRepository.updateLastLogin(currentUser.email)
+          }
+        } catch (firestoreError) {
+          console.error('Error managing user profile in Firestore:', firestoreError)
+          // Don't throw - allow user to continue to onboarding where we'll create/update the profile
+        }
       }
 
       // Auth state change will be picked up by onAuthStateChanged listener

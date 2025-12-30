@@ -19,9 +19,9 @@ import { useAuth } from '@/context/AuthContext'
 type UploadStep = 'upload' | 'preview' | 'mapping' | 'processing' | 'complete'
 
 export default function UploadPage() {
-  // Protect this route - redirects unauthenticated users
-  useProtectedRoute()
-
+  // Note: This page is accessible without login for preview
+  // Authentication is required only when starting analysis
+  
   const router = useRouter()
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState<UploadStep>('upload')
@@ -127,7 +127,21 @@ export default function UploadPage() {
   }
 
   const handleCompleteMapping = async () => {
-    if (!parsedData || !user) {
+    // Check authentication before starting analysis
+    if (!user) {
+      console.log('User not authenticated, redirecting to login')
+      // Save current state to resume after login
+      sessionStorage.setItem('uploadInProgress', JSON.stringify({
+        title,
+        fileName: selectedFile?.name,
+        step: 'mapping'
+      }))
+      sessionStorage.setItem('redirectAfterLogin', '/upload')
+      router.push('/login')
+      return
+    }
+
+    if (!parsedData) {
       console.error('Missing required data:', { parsedData: !!parsedData, user: !!user })
       setErrors(['Missing required data. Please try uploading the file again.'])
       return
@@ -465,13 +479,23 @@ export default function UploadPage() {
                 </Alert>
               )}
 
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setCurrentStep('preview')}>
-                  Back
-                </Button>
-                <Button variant="school" onClick={handleCompleteMapping}>
-                  Start Analysis
-                </Button>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={() => setCurrentStep('preview')}>
+                    Back
+                  </Button>
+                  <Button variant="school" onClick={handleCompleteMapping}>
+                    {user ? 'Start Analysis' : 'Sign In to Continue'}
+                  </Button>
+                </div>
+                
+                {!user && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      💡 <strong>Sign in required:</strong> To analyze your results and generate reports, please sign in with your Google account.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

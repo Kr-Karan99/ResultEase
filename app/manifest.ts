@@ -12,12 +12,12 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#2563eb',
     icons: [
       {
-        src: '/favicon-192x192.png',
+        src: '/result_ease_logo.png',
         sizes: '192x192',
         type: 'image/png',
       },
       {
-        src: '/favicon-512x512.png',
+        src: '/result_ease_logo.png',
         sizes: '512x512',
         type: 'image/png',
       },

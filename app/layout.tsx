@@ -11,10 +11,17 @@ const inter = Inter({
   variable: '--font-inter',
 })
 
-export const metadata: Metadata = generateMetadata({
-  title: APP_NAME,
-  description: APP_DESCRIPTION,
-})
+export const metadata: Metadata = {
+  ...generateMetadata({
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+  }),
+  icons: {
+    icon: '/result_ease_logo.png',
+    shortcut: '/result_ease_logo.png',
+    apple: '/result_ease_logo.png',
+  },
+}
 
 export const viewport: Viewport = {
   width: 'device-width',

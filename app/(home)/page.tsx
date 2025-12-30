@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
-import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 import { generateMetadata as genMeta, generateStructuredData, SEO_KEYWORDS, getDefaultFAQs } from '@/lib/seo'
 
 export const metadata: Metadata = genMeta({
@@ -82,9 +81,13 @@ export default function HomePage() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              <GoogleAuthButton variant="school" size="lg" />
+              <Link href="/login">
+                <Button size="lg" variant="school" className="text-lg px-8 py-6">
+                  Get Started Free
+                </Button>
+              </Link>
               <Link href="/demo">
-                <Button size="lg" variant="outline" className="text-lg px-8 py-4">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-6">
                   View Demo
                 </Button>
               </Link>

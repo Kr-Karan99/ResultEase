@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Get authenticated user's email
+    function getAuthEmail() {
+      return request.auth.token.email.lower();
+    }
+    
+    // Check if user is the owner of this document
+    function isOwner(userEmail) {
+      return isAuthenticated() && getAuthEmail() == userEmail;
+    }
+    
+    // Check if user is a member of the owner
+    function isMemberOf(ownerEmail) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(ownerEmail)) &&
+             get(/databases/$(database)/documents/users/$(ownerEmail)).data.members.hasAny([getAuthEmail()]);
+    }
+    
+    // Check if user can read this profile (owner themselves, or their member/owner)
+    function canReadProfile(userEmail) {
+      return isOwner(userEmail) || // User reading their own profile
+             (exists(/databases/$(database)/documents/users/$(userEmail)) &&
+              get(/databases/$(database)/documents/users/$(userEmail)).data.role == 'member' && 
+              getAuthEmail() == get(/databases/$(database)/documents/users/$(userEmail)).data.ownerEmail) || // Owner reading member's profile
+             (exists(/databases/$(database)/documents/users/$(userEmail)) &&
+              get(/databases/$(database)/documents/users/$(userEmail)).data.role == 'owner' && 
+              isMemberOf(userEmail)); // Member reading owner's profile
+    }
+    
+    // Validate that protected fields are not modified
+    function protectedFieldsUnchanged() {
+      return request.resource.data.uid == resource.data.uid &&
+             request.resource.data.email == resource.data.email &&
+             request.resource.data.createdAt == resource.data.createdAt;
+    }
+    
+    // Prevent role escalation - Members cannot become owners
+    function noRoleEscalation() {
+      return !('role' in request.resource.data && 'role' in resource.data) ||
+             !(resource.data.role == 'member' && request.resource.data.role == 'owner');
+    }
+    
+    // Validate ownerEmail doesn't change for members
+    function ownerEmailUnchanged() {
+      return !('ownerEmail' in resource.data) || 
+             !('ownerEmail' in request.resource.data) || 
+             request.resource.data.ownerEmail == resource.data.ownerEmail;
+    }
+    
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    // Document ID is the user's email (sanitized/lowercase)
+    match /users/{userEmail} {
+      
+      // READ: User can read their own profile, owner can read member profiles, members can read owner profile
+      allow read: if isAuthenticated() && (
+        isOwner(userEmail) || 
+        canReadProfile(userEmail)
+      );
+      
+      // Special GET for membership checks (limited to checking if email exists in members array)
+      // This is needed for the checkIfMemberAndGetOwner function
+      allow get: if isAuthenticated() && (
+        isOwner(userEmail) || // Reading own profile
+        exists(/databases/$(database)/documents/users/$(getAuthEmail())) // User has their own profile
+      );
+      
+      // CREATE: User can create their own profile during sign-up/onboarding
+      allow create: if isAuthenticated() && 
+                       isOwner(userEmail) &&
+                       request.resource.data.email == getAuthEmail() &&
+                       request.resource.data.uid is string &&
+                       request.resource.data.uid.size() > 0 &&
+                       request.resource.data.displayName is string &&
+                       request.resource.data.role in ['owner', 'member'];
+      
+      // UPDATE: User can update their own profile with restrictions
+      allow update: if isAuthenticated() && 
+                       isOwner(userEmail) &&
+                       protectedFieldsUnchanged() &&
+                       noRoleEscalation() &&
+                       ownerEmailUnchanged();
+      
+      // DELETE: Only owners can delete member profiles that belong to them
+      allow delete: if isAuthenticated() && 
+                       resource.data.role == 'member' && 
+                       resource.data.ownerEmail == getAuthEmail() &&
+                       // Ensure deleter is actually an owner
+                       exists(/databases/$(database)/documents/users/$(getAuthEmail())) &&
+                       get(/databases/$(database)/documents/users/$(getAuthEmail())).data.role == 'owner';
+    }
+    
+    // ============================================
+    // REPORTS COLLECTION (Future)
+    // ============================================
+    // Uncomment when you implement report saving to Firestore
+    /*
+    match /reports/{reportId} {
+      // Anyone can create a report (for freemium - guest uploads)
+      allow create: if true;
+      
+      // Only authenticated users can read/update/delete their own reports
+      allow read: if isAuthenticated() && (
+        resource.data.userEmail == getAuthEmail() ||
+        // Members can view reports from their organization
+        (exists(/databases/$(database)/documents/users/$(getAuthEmail())) &&
+         get(/databases/$(database)/documents/users/$(getAuthEmail())).data.role == 'member' &&
+         resource.data.organizationName == get(/databases/$(database)/documents/users/$(getAuthEmail())).data.organizationName)
+      );
+      
+      allow update: if isAuthenticated() && 
+                       resource.data.userEmail == getAuthEmail();
+      
+      allow delete: if isAuthenticated() && 
+                       resource.data.userEmail == getAuthEmail();
+    }
+    */
+  }
+}
