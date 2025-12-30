@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 
 export default function FAQPage() {
@@ -117,6 +118,7 @@ export default function FAQPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-gray-50">
+      <Header />
       {/* Hero Section */}
       <section className="pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto text-center">
