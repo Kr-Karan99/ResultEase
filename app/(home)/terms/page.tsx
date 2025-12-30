@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 
 export default function TermsOfServicePage() {
@@ -256,6 +257,7 @@ export default function TermsOfServicePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-gray-50">
+      <Header />
       {/* Hero Section */}
       <section className="pt-24 pb-12 px-4">
         <div className="max-w-4xl mx-auto text-center">

@@ -85,18 +85,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!existingProfile) {
             // Check if this email is added as a member by any owner
             console.log('Checking if user is a member:', currentUser.email)
+            const ownerEmail = await firebaseUserRepository.checkIfMemberAndGetOwner(currentUser.email)
             
-            // Search for owners who have this email in their members array
-            // For now, we'll handle this in the login page
-            // Here we just create initial profile
-            console.log('Creating initial profile for new user:', currentUser.email)
-            await firebaseUserRepository.createInitialUserProfile(
-              currentUser.uid,
-              currentUser.email,
-              currentUser.displayName || 'User',
-              currentUser.photoURL || undefined
-            )
-            console.log('Initial profile created successfully')
+            if (ownerEmail) {
+              // User is a member! Create their profile from owner's data
+              console.log('User is a member of:', ownerEmail)
+              await firebaseUserRepository.createMemberProfile(
+                currentUser.email,
+                currentUser.uid,
+                currentUser.displayName || 'Member',
+                ownerEmail,
+                currentUser.photoURL || undefined
+              )
+              console.log('Member profile created successfully')
+            } else {
+              // Not a member, create initial profile for new user
+              console.log('Creating initial profile for new user:', currentUser.email)
+              await firebaseUserRepository.createInitialUserProfile(
+                currentUser.uid,
+                currentUser.email,
+                currentUser.displayName || 'User',
+                currentUser.photoURL || undefined
+              )
+              console.log('Initial profile created successfully')
+            }
           } else {
             // Update last login for existing users
             console.log('Updating last login for existing user:', currentUser.email)

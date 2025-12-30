@@ -107,34 +107,33 @@ service cloud.firestore {
     match /users/{userEmail}/reports/{reportId} {
       // Helper function to check if user can read this report
       function canReadReport() {
-        let requesterEmail = getAuthEmail();
-        // User can always read their own reports
-        if (requesterEmail == userEmail) {
-          return true;
-        }
-        // Check if requester is owner and userEmail is their member
-        let requesterDoc = get(/databases/$(database)/documents/users/$(requesterEmail));
-        if (requesterDoc.data.role == 'owner' && 
-            requesterDoc.data.members.hasAny([userEmail])) {
-          return true;
-        }
-        // Check if requester is member and userEmail is their owner or fellow member
-        if (requesterDoc.data.role == 'member' && 
-            requesterDoc.data.ownerEmail == userEmail) {
-          return true;
-        }
-        // Check if both are members of same owner
-        if (requesterDoc.data.role == 'member' && 
-            requesterDoc.data.ownerEmail != null) {
-          let ownerDoc = get(/databases/$(database)/documents/users/$(requesterDoc.data.ownerEmail));
-          if (ownerDoc.data.members.hasAny([userEmail])) {
-            return true;
-          }
-        }
-        return false;
+        // First check: User can always read their own reports (most common case)
+        return getAuthEmail() == userEmail ||
+               // Second check: Owner reading member reports
+               (exists(/databases/$(database)/documents/users/$(getAuthEmail())) &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.role == 'owner' &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.members != null &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.members.hasAny([userEmail])) ||
+               // Third check: Member reading owner reports
+               (exists(/databases/$(database)/documents/users/$(getAuthEmail())) &&
+                exists(/databases/$(database)/documents/users/$(userEmail)) &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.role == 'member' &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.ownerEmail != null &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.ownerEmail == userEmail &&
+                get(/databases/$(database)/documents/users/$(userEmail)).data.role == 'owner') ||
+               // Fourth check: Members reading each other's reports (same owner)
+               (exists(/databases/$(database)/documents/users/$(getAuthEmail())) &&
+                exists(/databases/$(database)/documents/users/$(userEmail)) &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.role == 'member' &&
+                get(/databases/$(database)/documents/users/$(getAuthEmail())).data.ownerEmail != null &&
+                get(/databases/$(database)/documents/users/$(userEmail)).data.role == 'member' &&
+                get(/databases/$(database)/documents/users/$(userEmail)).data.ownerEmail != null &&
+                get(/databases/$(database)/documents/users/$(userEmail)).data.ownerEmail == 
+                   get(/databases/$(database)/documents/users/$(getAuthEmail())).data.ownerEmail);
       }
       
       // Users can read reports from their organization members
+      // This covers both get (single document) and list (query) operations
       allow read: if isAuthenticated() && canReadReport();
       
       // Users can only create, update, and delete their own reports

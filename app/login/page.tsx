@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   // Redirect to onboarding if authenticated but not onboarded
   // Or to dashboard/intended page if already onboarded
-  // Check if user is a member first
+  // Check if user is a member first - members skip onboarding
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!loading && user && firebaseUser && firebaseUser.email) {
@@ -40,7 +40,40 @@ export default function LoginPage() {
         } else {
           // Not onboarded - check if they're a member
           console.log('Checking if user is a member...')
-          router.push('/onboarding')
+          const ownerEmail = await firebaseUserRepository.checkIfMemberAndGetOwner(firebaseUser.email)
+          
+          if (ownerEmail) {
+            // User is a member! Create their profile from owner's data if not already created
+            console.log('User is a member of:', ownerEmail)
+            try {
+              const existingProfile = await firebaseUserRepository.getUserProfile(firebaseUser.email)
+              if (!existingProfile) {
+                await firebaseUserRepository.createMemberProfile(
+                  firebaseUser.email,
+                  firebaseUser.uid,
+                  firebaseUser.displayName || 'Member',
+                  ownerEmail,
+                  firebaseUser.photoURL || undefined
+                )
+                console.log('Member profile created, redirecting to dashboard')
+              }
+              // Redirect to dashboard (member profile exists or was just created)
+              const redirectUrl = sessionStorage.getItem('redirectAfterLogin')
+              if (redirectUrl) {
+                sessionStorage.removeItem('redirectAfterLogin')
+                router.push(redirectUrl)
+              } else {
+                router.push('/dashboard')
+              }
+            } catch (error) {
+              console.error('Error creating member profile:', error)
+              // If error, still redirect to onboarding as fallback
+              router.push('/onboarding')
+            }
+          } else {
+            // Not a member, redirect to onboarding
+            router.push('/onboarding')
+          }
         }
       }
     }
